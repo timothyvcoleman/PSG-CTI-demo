@@ -1,5 +1,5 @@
 terraform {
-  required_provider {
+  required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "5.1.0"
@@ -33,7 +33,7 @@ resource "azurerm_virtual_network" "psg-vn" {
 resource "azurerm_subnet" "psg-subnet" {
   name                 = "subnet"
   resource_group_name  = azurerm_resource_group.psg-rg.name
-  virtual_network_name = azurerm_resource_group.psg-vn.name
+  virtual_network_name = azurerm_virtual_network.psg-vn.name
   address_prefixes     = ["10.1.0.0/24"]
 }
 
@@ -49,7 +49,7 @@ resource "azurerm_network_security_group" "psg-sg" {
 }
 
 # inbound rule for SIP port
-resource "azurerm_network_security_rule" "psg-sip-rule" {
+  resource "azurerm_network_security_rule" "psg-sip-rule" {
   name                        = "psg-dev-rule"
   priority                    = 100
   direction                   = "Inbound"
@@ -102,7 +102,7 @@ resource "azurerm_network_interface" "psg-nit" {
 
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azure_subnet.psg-subnet.id
+    subnet_id                     = azurerm_subnet.psg-subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.psg-ip.id
   }
