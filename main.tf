@@ -48,14 +48,30 @@ resource "azurerm_network_security_group" "psg-sg" {
   }
 }
 
+# inbound rule for SIP port
 resource "azurerm_network_security_rule" "psg-dev-rule" {
   name                        = "psg-dev-rule"
   priority                    = 100
   direction                   = "Inbound"
   access                      = "Allow"
-  protocol                    = "*"
+  protocol                    = "Udp"
   source_port_range           = "*"
-  destination_port_range      = "*"
+  destination_port_range      = "5060"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.psg-rg.name
+  network_security_group_name = azurerm_network_security_group.psg-sg.name
+}
+
+# inbound rule for RTP port range
+resource "azurerm_network_security_rule" "psg-dev-rule" {
+  name                        = "psg-dev-rule"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Udp"
+  source_port_range           = "*"
+  destination_port_range      = "10000 - 10010"
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.psg-rg.name
