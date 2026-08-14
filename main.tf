@@ -49,7 +49,7 @@ resource "azurerm_network_security_group" "psg-sg" {
 }
 
 # inbound rule for SIP port
-resource "azurerm_network_security_rule" "psg-dev-rule" {
+resource "azurerm_network_security_rule" "psg-sip-rule" {
   name                        = "psg-dev-rule"
   priority                    = 100
   direction                   = "Inbound"
@@ -64,7 +64,7 @@ resource "azurerm_network_security_rule" "psg-dev-rule" {
 }
 
 # inbound rule for RTP port range
-resource "azurerm_network_security_rule" "psg-dev-rule" {
+resource "azurerm_network_security_rule" "psg-rtp-rule" {
   name                        = "psg-dev-rule"
   priority                    = 100
   direction                   = "Inbound"
