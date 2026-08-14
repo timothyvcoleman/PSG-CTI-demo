@@ -95,3 +95,48 @@ resource "azurerm_network_interface" "psg-nit" {
     environment = "dev"
   }
 }
+
+resource "azurerm_linux_virtual_machine" "psg-vm" {
+  name                = "psg-vm"
+  resource_group_name = azurerm_resource_group.psg-rg.name
+  location            = azurerm_resource_group.psg-rg.location
+  size                = "Standard_D2ds_v4"
+  admin_username      = "tim"
+  network_interface_ids = [
+    azurerm_network_interface.psg-nit.id,
+  ]
+
+  custom_data = filebase64("customdata.tpl")
+
+  admin_ssh_key {
+    username   = "tim"
+    public_key = file("/.ssh/psg_azure_key.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  provisioner "local-exec" {
+    command = templatefile("${var.host_os}-ssh-script.tpl", {
+      hostname     = self.public_ip_address,
+      user         = "tim"
+      identityfile = "~/.ssh/psg_azure_key"
+      }
+    )
+
+    interpreter = var.host_os == "windows" ? ["Powershell", "-Command"] : ["bash", "-c"]
+  }
+
+  tags = {
+    environment = "dev"
+  }
+}
