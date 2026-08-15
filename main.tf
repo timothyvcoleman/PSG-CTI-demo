@@ -13,7 +13,7 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "psg-rg" {
   name     = "psg-resource"
-  location = "West US"
+  location = "East US"
   tags = {
     environment = "dev"
   }
@@ -48,30 +48,15 @@ resource "azurerm_network_security_group" "psg-sg" {
   }
 }
 
-# inbound rule for SIP port
-  resource "azurerm_network_security_rule" "psg-sip-rule" {
-  name                        = "psg-dev-rule"
+# inbound rule for SIP port + RTP port
+  resource "azurerm_network_security_rule" "psg-voip-rules" {
+  name                        = "psg-voip-rules"
   priority                    = 100
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Udp"
   source_port_range           = "*"
-  destination_port_range      = "5060"
-  source_address_prefix       = "*"
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.psg-rg.name
-  network_security_group_name = azurerm_network_security_group.psg-sg.name
-}
-
-# inbound rule for RTP port range
-resource "azurerm_network_security_rule" "psg-rtp-rule" {
-  name                        = "psg-dev-rule"
-  priority                    = 100
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Udp"
-  source_port_range           = "*"
-  destination_port_range      = "10000 - 10010"
+  destination_port_ranges      = ["5060", "10000-10010"]
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.psg-rg.name
@@ -117,7 +102,7 @@ resource "azurerm_linux_virtual_machine" "psg-vm" {
   resource_group_name = azurerm_resource_group.psg-rg.name
   location            = azurerm_resource_group.psg-rg.location
   size                = "Standard_D2ds_v4"
-  admin_username      = "tim"
+  admin_username      = "psg"
   network_interface_ids = [
     azurerm_network_interface.psg-nit.id,
   ]
@@ -126,7 +111,7 @@ resource "azurerm_linux_virtual_machine" "psg-vm" {
 
 # name the SSH Key Pair "psg_azure_key"
   admin_ssh_key {
-    username   = "admin"
+    username   = "psg"
     public_key = file("~/.ssh/psg_azure_key.pub")
   }
 
