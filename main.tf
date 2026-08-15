@@ -85,8 +85,8 @@ resource "azurerm_subnet_network_security_group_association" "psg_sga" {
 
 resource "azurerm_public_ip" "psg-ip" {
   name                = "psg-ip"
-  resource_group_name = "azurerm_resource_group.psg-rg.name"
-  location            = "azurerm_resource_group.psg-rg.location"
+  resource_group_name = azurerm_resource_group.psg-rg.name
+  location            = azurerm_resource_group.psg-rg.location
   allocation_method   = "Static"
   sku                 = "Standard"
 
@@ -98,7 +98,7 @@ resource "azurerm_public_ip" "psg-ip" {
 resource "azurerm_network_interface" "psg-nit" {
   name                = "psg-nit"
   location            = azurerm_resource_group.psg-rg.location
-  resource_group_name = "azurerm_resource_group.psg-rg.name"
+  resource_group_name = azurerm_resource_group.psg-rg.name
 
   ip_configuration {
     name                          = "internal"
@@ -122,11 +122,12 @@ resource "azurerm_linux_virtual_machine" "psg-vm" {
     azurerm_network_interface.psg-nit.id,
   ]
 
-  custom_data = var.host.os == "windows" ? filebase64("windows-customdata.tpl") : filebase64("linux-customdata.tpl")
+  custom_data = var.host_os == "windows" ? filebase64("windows-customdata.tpl") : filebase64("linux-customdata.tpl")
 
+# name the SSH Key Pair "psg_azure_key"
   admin_ssh_key {
-    username   = "tim"
-    public_key = file("/.ssh/psg_azure_key.pub")
+    username   = "admin"
+    public_key = file("~/.ssh/psg_azure_key.pub")
   }
 
   os_disk {
