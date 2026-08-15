@@ -48,15 +48,15 @@ resource "azurerm_network_security_group" "psg-sg" {
   }
 }
 
-# inbound rule for SIP port + RTP port
+# inbound rule for SSH + SIP port + RTP port
   resource "azurerm_network_security_rule" "psg-voip-rules" {
   name                        = "psg-voip-rules"
   priority                    = 100
   direction                   = "Inbound"
   access                      = "Allow"
-  protocol                    = "Udp"
+  protocol                    = "*"
   source_port_range           = "*"
-  destination_port_ranges      = ["5060", "10000-10010"]
+  destination_port_ranges      = ["22","5060", "10000-10010"]
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.psg-rg.name
