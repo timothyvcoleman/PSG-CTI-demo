@@ -122,7 +122,7 @@ resource "azurerm_linux_virtual_machine" "psg-vm" {
     azurerm_network_interface.psg-nit.id,
   ]
 
-  custom_data = filebase64("customdata.tpl")
+  custom_data = var.host.os == "windows" ? filebase64("windows-customdata.tpl") : filebase64("linux-customdata.tpl")
 
   admin_ssh_key {
     username   = "tim"
@@ -144,7 +144,7 @@ resource "azurerm_linux_virtual_machine" "psg-vm" {
   provisioner "local-exec" {
     command = templatefile("${var.host_os}-ssh-script.tpl", {
       hostname     = self.public_ip_address,
-      user         = "tim"
+      user         = "admin"
       identityfile = "~/.ssh/psg_azure_key"
       }
     )
