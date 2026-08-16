@@ -74,40 +74,6 @@ type=transport
 protocol=udp
 bind=0.0.0.0:5060
 
-[trunk-sip]
-type=endpoint
-context-from-siptrunk
-disallow=all
-allow=ulaw
-aors=trunk-sip-aor
-from_user=1010
-outbound_auth=trunk-sip
-direct_media=no
-
-[trunk-sip-aor]
-type=aor
-contact=
-
-[trunk-sip-auth]
-type=auth
-auth_type=userpass
-password=psg
-username=1010
-
-[trunk-identity]
-type=identity
-match=[make-an-external-server]
-endpoint=trunk-sip
-
-[registration-sip]
-type=registration
-outbound_auth=trunk-sip-auth
-server_uri=sip:[make-an-external-server]:5060
-auth_rejection_permanent=no
-client_uri=sip:1010@[make-an-external-server]:5060
-retry_interval=60
-contact_user=9999
-
 [e1]
 type=endpoint
 context=from-internal
@@ -124,11 +90,11 @@ direct_media=no
 type=auth
 auth_type=userpass
 password=psg1
-username=psg1
+username=e1
 
 [e1]
 type=aor
-max_contact=1
+max_contacts=1
 
 [e2]
 type=endpoint
@@ -146,11 +112,11 @@ direct_media=no
 type=auth
 auth_type=userpass
 password=psg2
-username=psg2
+username=e2
 
 [e2]
 type=aor
-max_contact=1
+max_contacts=1
 EOF
 
 sudo asterisk -r
