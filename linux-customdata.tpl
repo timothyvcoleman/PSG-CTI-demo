@@ -55,3 +55,107 @@ sudo service asterisk start
 
 # use this to check the progress
 # cat /var/log/cloud-init-output.log
+
+# download zoiper for voice calls
+
+
+# creating pjsip endpoint in asterisk
+sudo mv /etc/asterisk/pjsip.conf /etc/asterisk/pjsip.conf.bak
+
+cd /etc/asterisk
+
+cat << 'EOF' | sudo tee -a /etc/asterisk/pjsip.conf > /dev/null
+[global]
+type=global
+endpoint_identifier_order=ip,username,anonymous
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
+
+[trunk-sip]
+type=endpoint
+context-from-siptrunk
+disallow=all
+allow=ulaw
+aors=trunk-sip-aor
+from_user=1010
+outbound_auth=trunk-sip
+direct_media=no
+
+[trunk-sip-aor]
+type=aor
+contact=
+
+[trunk-sip-auth]
+type=auth
+auth_type=userpass
+password=psg
+username=1010
+
+[trunk-identity]
+type=identity
+match=[make-an-external-server]
+endpoint=trunk-sip
+
+[registration-sip]
+type=registration
+outbound_auth=trunk-sip-auth
+server_uri=sip:[make-an-external-server]:5060
+auth_rejection_permanent=no
+client_uri=sip:1010@[make-an-external-server]:5060
+retry_interval=60
+contact_user=9999
+
+[e1]
+type=endpoint
+context=from-internal
+disallow=all
+allow=ulaw
+auth=e1
+aors=e1
+force_rport=yes
+rtp_symmetric=yes
+rewrite_contact=yes
+direct_media=no
+
+[e1]
+type=auth
+auth_type=userpass
+password=psg1
+username=psg1
+
+[e1]
+type=aor
+max_contact=1
+
+[e2]
+type=endpoint
+context=from-internal
+disallow=all
+allow=ulaw
+auth=e1
+aors=e1
+force_rport=yes
+rtp_symmetric=yes
+rewrite_contact=yes
+direct_media=no
+
+[e2]
+type=auth
+auth_type=userpass
+password=psg2
+username=psg2
+
+[e2]
+type=aor
+max_contact=1
+EOF
+
+sudo asterisk -r
+core restart now
+
+# to verify the endpoint was created
+# sudo asterisk -r
+# pjsip show endpoints
