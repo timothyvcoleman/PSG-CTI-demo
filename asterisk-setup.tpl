@@ -56,8 +56,6 @@ sudo service asterisk start
 # use this to check the progress
 # cat /var/log/cloud-init-output.log
 
-# download zoiper for voice calls
-
 
 # creating pjsip endpoint in asterisk
 sudo mv /etc/asterisk/pjsip.conf /etc/asterisk/pjsip.conf.bak
@@ -73,6 +71,40 @@ endpoint_identifier_order=ip,username,anonymous
 type=transport
 protocol=udp
 bind=0.0.0.0:5060
+
+[trunk-sip]
+type=endpoint
+context-from-siptrunk
+disallow=all
+allow=ulaw
+aors=trunk-sip-aor
+from_user=1010
+outbound_auth=trunk-sip
+direct_media=no
+
+[trunk-sip-aor]
+type=aor
+contact-sip=sip:[make-an-external-server]:5060
+
+[trunk-sip-auth]
+type=auth
+auth_type=userpass
+password=psg
+username=1010
+
+[trunk-identity]
+type=identity
+match=[make-an-external-server]
+endpoint=trunk-sip
+
+[registration-sip]
+type=registration
+outbound_auth=trunk-sip-auth
+server_uri=sip:[make-an-external-server]:5060
+auth_rejection_permanent=no
+client_uri=sip:1010@[make-an-external-server]:5060
+retry_interval=60
+contact_user=9999
 
 [e1]
 type=endpoint

@@ -12,7 +12,7 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "psg-rg" {
-  name     = "psg-resource"
+  name     = "psg-resources"
   location = "East US"
   tags = {
     environment = "dev"
@@ -56,7 +56,7 @@ resource "azurerm_network_security_group" "psg-sg" {
   access                      = "Allow"
   protocol                    = "*"
   source_port_range           = "*"
-  destination_port_ranges      = ["22","5060", "10000-10010"]
+  destination_port_ranges      = ["22","80","5060", "10000-10010"]
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.psg-rg.name
@@ -68,8 +68,8 @@ resource "azurerm_subnet_network_security_group_association" "psg_sga" {
   network_security_group_id = azurerm_network_security_group.psg-sg.id
 }
 
-resource "azurerm_public_ip" "psg-ip" {
-  name                = "psg-ip"
+resource "azurerm_public_ip" "asterisk-ip" {
+  name                = "asterisk-ip"
   resource_group_name = azurerm_resource_group.psg-rg.name
   location            = azurerm_resource_group.psg-rg.location
   allocation_method   = "Static"
@@ -80,8 +80,20 @@ resource "azurerm_public_ip" "psg-ip" {
   }
 }
 
-resource "azurerm_network_interface" "psg-nit" {
-  name                = "psg-nit"
+resource "azurerm_public_ip" "ticketing-ip" {
+  name                = "ticketing-ip"
+  resource_group_name = azurerm_resource_group.psg-rg.name
+  location            = azurerm_resource_group.psg-rg.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+resource "azurerm_network_interface" "asterisk-nit" {
+  name                = "asterisk-nit"
   location            = azurerm_resource_group.psg-rg.location
   resource_group_name = azurerm_resource_group.psg-rg.name
 
@@ -89,7 +101,7 @@ resource "azurerm_network_interface" "psg-nit" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.psg-subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.psg-ip.id
+    public_ip_address_id          = azurerm_public_ip.asterisk-ip.id
   }
 
   tags = {
@@ -97,17 +109,34 @@ resource "azurerm_network_interface" "psg-nit" {
   }
 }
 
-resource "azurerm_linux_virtual_machine" "psg-vm" {
-  name                = "psg-vm"
+resource "azurerm_network_interface" "ticketing-nit" {
+  name                = "ticketing-nit"
+  location            = azurerm_resource_group.psg-rg.location
+  resource_group_name = azurerm_resource_group.psg-rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.psg-subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.ticketing-ip.id
+  }
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "asterisk-server" {
+  name                = "asterisk-server"
   resource_group_name = azurerm_resource_group.psg-rg.name
   location            = azurerm_resource_group.psg-rg.location
   size                = "Standard_D2ds_v4"
   admin_username      = "psg"
   network_interface_ids = [
-    azurerm_network_interface.psg-nit.id,
+    azurerm_network_interface.asterisk-nit.id,
   ]
 
-  custom_data = var.host_os == "windows" ? filebase64("windows-customdata.tpl") : filebase64("linux-customdata.tpl")
+  custom_data = filebase64("asterisk-setup.tpl")
 
 # name the SSH Key Pair "psg_azure_key"
   admin_ssh_key {
@@ -128,17 +157,71 @@ resource "azurerm_linux_virtual_machine" "psg-vm" {
   }
 
   provisioner "local-exec" {
-    command = templatefile("${var.host_os}-ssh-script.tpl", {
+    command = templatefile("linux-ssh-script.tpl", {
       hostname     = self.public_ip_address,
       user         = "admin"
       identityfile = "~/.ssh/psg_azure_key"
       }
     )
 
-    interpreter = var.host_os == "windows" ? ["Powershell", "-Command"] : ["bash", "-c"]
+    interpreter = ["bash", "-c"]
   }
 
   tags = {
     environment = "dev"
   }
+}
+
+resource "azurerm_linux_virtual_machine" "ticketing-server" {
+  name                = "ticketing-server"
+  resource_group_name = azurerm_resource_group.psg-rg.name
+  location            = azurerm_resource_group.psg-rg.location
+  size                = "Standard_D2ds_v4"
+  admin_username      = "psg"
+  network_interface_ids = [
+    azurerm_network_interface.ticketing-nit.id,
+  ]
+
+  custom_data = filebase64("ticketing-setup.tpl")
+
+# name the SSH Key Pair "psg_azure_key"
+  admin_ssh_key {
+    username   = "psg"
+    public_key = file("~/.ssh/psg_azure_key.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  provisioner "local-exec" {
+    command = templatefile("linux-ssh-script.tpl", {
+      hostname     = self.public_ip_address,
+      user         = "admin"
+      identityfile = "~/.ssh/psg_azure_key"
+      }
+    )
+
+    interpreter = ["bash", "-c"]
+  }
+
+  tags = {
+    environment = "dev"
+  }
+}
+
+output "asterisk-public_ip_address" {
+  value = "${azurerm_linux_virtual_machine.asterisk-server.name}: ${azurerm_public_ip.asterisk-ip.ip_address}"
+}
+
+output "ticketing-public_ip_address" {
+  value = "${azurerm_linux_virtual_machine.ticketing-server.name}: ${azurerm_public_ip.ticketing-ip.ip_address}"
 }
